@@ -15,7 +15,7 @@ def send_email(message):
 
     # Create a MIMEText object with UTF-8 encoding
     email_message = MIMEText(message, "plain", "utf-8")
-    email_message["Subject"] = "Tesla News"
+    email_message["Subject"] = "Today's news"
     email_message["From"] = username
     email_message["To"] = receiver
 
