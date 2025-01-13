@@ -1,12 +1,22 @@
 import requests
 from send_email import send_email
+from datetime import date, timedelta
+
+# Get today's date
+today = date.today()
+
+# Subtract 30 days
+thirty_days_ago = today - timedelta(days=30)
+
+# Format the result in 'YYYY-MM-DD'
+formatted_date = thirty_days_ago.strftime('%Y-%m-%d')
 
 topic = "Nvidia"
 
 api_key = '68653f5221de4df1b55da6010dbd9029'
 url = ("https://newsapi.org/v2/everything?"
        f"q={topic}&"
-       "from=2025-1-1&"
+       f"from={formatted_date}&"
        "sortBy=publishedAt&" 
        "apiKey=68653f5221de4df1b55da6010dbd9029&"
        "language=en")
