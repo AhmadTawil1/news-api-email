@@ -1,0 +1,26 @@
+on:
+  schedule:
+    - cron: '30 18 * * *' # Runs daily at 18:30 UTC (20:30 Israel Time during Standard Time)
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  run-news-automation:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run news automation
+      run: |
+        python main.py # Replace 'main.py' with the entry point of your script
