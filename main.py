@@ -30,7 +30,7 @@ content = request.json()
 # Access the article titles and description
 message = ""
 for article in content["articles"][:20]:
-    if article["title"] is not None:
+    if article["title"] and article["description"] and article["url"] is not None:
         title = article["title"]
         description = article["description"]
         link = article["url"]
