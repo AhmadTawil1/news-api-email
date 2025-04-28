@@ -1,43 +1,97 @@
 import requests
-from send_email import send_email
+import os
+import logging
 from datetime import date, timedelta
+from dotenv import load_dotenv
+from send_email import send_email
 
-# Get today's date
-today = date.today()
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('news_fetcher.log'),
+        logging.StreamHandler()
+    ]
+)
 
-# Subtract 30 days
-thirty_days_ago = today - timedelta(days=30)
+# Load environment variables
+load_dotenv()
 
-# Format the result in 'YYYY-MM-DD'
-formatted_date = thirty_days_ago.strftime('%Y-%m-%d')
+def fetch_news():
+    try:
+        # Get configuration from environment variables
+        api_key = os.getenv('NEWS_API_KEY')
+        topic = os.getenv('NEWS_TOPIC', 'Nvidia')  # Default to 'Nvidia' if not set
+        days_back = int(os.getenv('NEWS_DAYS_BACK', '30'))  # Default to 30 days if not set
 
-topic = "Nvidia"
+        if not api_key:
+            raise ValueError("NEWS_API_KEY not found in environment variables")
 
-api_key = '68653f5221de4df1b55da6010dbd9029'
-url = ("https://newsapi.org/v2/everything?"
-       f"q={topic}&"
-       f"from={formatted_date}&"
-       "sortBy=publishedAt&" 
-       "apiKey=68653f5221de4df1b55da6010dbd9029&"
-       "language=en")
+        # Calculate date range
+        today = date.today()
+        start_date = today - timedelta(days=days_back)
+        formatted_date = start_date.strftime('%Y-%m-%d')
 
-# Make request
-request = requests.get(url)
+        # Construct API URL
+        url = (
+            "https://newsapi.org/v2/everything?"
+            f"q={topic}&"
+            f"from={formatted_date}&"
+            "sortBy=publishedAt&"
+            f"apiKey={api_key}&"
+            "language=en"
+        )
 
-# Get a dictionary with data
-content = request.json()
+        # Make request with error handling
+        try:
+            response = requests.get(url)
+            response.raise_for_status()  # Raise an exception for bad status codes
+            content = response.json()
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error fetching news: {str(e)}")
+            return None
 
-# Access the article titles and description
-message = ""
-for article in content["articles"][:20]:
-    if article["title"] and article["description"] and article["url"] and article["publishedAt"] is not None:
-        title = article["title"]
-        description = article["description"]
-        link = article["url"]
-        date = article["publishedAt"]
-        sep = "---------------------------------------------"
-        message += title + "\n" + description + "\n" + date + "\n" + link + "\n" + sep + "\n"
+        # Validate API response
+        if content.get('status') != 'ok':
+            logging.error(f"News API error: {content.get('message', 'Unknown error')}")
+            return None
 
-print(message)
-send_email(message)
+        # Format message
+        message = ""
+        for article in content.get("articles", [])[:20]:
+            if all(article.get(field) for field in ["title", "description", "url", "publishedAt"]):
+                message += (
+                    f"{article['title']}\n"
+                    f"{article['description']}\n"
+                    f"{article['publishedAt']}\n"
+                    f"{article['url']}\n"
+                    "---------------------------------------------\n"
+                )
+
+        if not message:
+            logging.warning("No valid articles found")
+            return None
+
+        return message
+
+    except Exception as e:
+        logging.error(f"Unexpected error: {str(e)}")
+        return None
+
+def main():
+    logging.info("Starting news fetch process")
+    message = fetch_news()
+    
+    if message:
+        try:
+            send_email(message)
+            logging.info("Email sent successfully")
+        except Exception as e:
+            logging.error(f"Error sending email: {str(e)}")
+    else:
+        logging.error("Failed to fetch news or no valid articles found")
+
+if __name__ == "__main__":
+    main()
 
